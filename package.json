@@ -27,5 +27,10 @@
     "@rollup/pluginutils": "^5.0.1",
     "rollup": "^3.2.3",
     "terser": "^5.15.1"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "openai": "^3.2.1"
   }
 }

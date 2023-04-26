@@ -2,33 +2,123 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Live2D 看板娘 / Demo</title>
+<title>Live2D 看板娘</title>
 <style>
-#github svg {
-	transition: all 1s;
-	fill: #222;
-	color: #fff;
-	position: absolute;
-	top: 0;
+ .chat-container {
+	 position: fixed;
+	 bottom: 0;
+	 right: 0;
+	 top: 90%;
+	 left: 50%;
+	 width: 300px;
+	 max-height: 60%;
+	 overflow-y: auto;
+	 padding: 10px;
+	 background-color: rgba(255, 255, 255, 0.8);
+	 border-radius: 10px 10px 0 0;
+	 z-index:3;
+
+ }
+
+
+#userInput {
+	position: fixed;
+	bottom: 0;
 	right: 0;
-	border: 0;
-	width: 80px;
-	height: 80px;
+	top: 80%;
+	left: 50%;
+	padding: 10px;
+	outline: none;
+	border: none;
+	border-radius: 0 0 10px 10px;
+	z-index:1;
 }
-#github:hover svg {
-	width: 160px;
-	height: 160px;
-}
+
 </style>
+	<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+	<script>
+		function showMessage(text, timeout, priority) {
+			if (!text || (sessionStorage.getItem("waifu-text") && sessionStorage.getItem("waifu-text") > priority)) return;
+			text = text;
+			sessionStorage.setItem("waifu-text", priority);
+			const tips = document.getElementById("waifu-tips");
+			tips.innerHTML = text;
+			tips.classList.add("waifu-tips-active");
+			setTimeout(() => {
+				sessionStorage.removeItem("waifu-text");
+				tips.classList.remove("waifu-tips-active");
+			}, timeout);
+		}
+	</script>
 </head>
 <body>
-<a id="github" href="https://github.com/stevenjoezhang/live2d-widget" target="_blank" title="Visit the open-source code on GitHub!">
-	<svg viewBox="0 0 250 250" aria-hidden="true">
-		<path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"></path>
-		<path d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2" fill="currentColor" class="octo-arm"></path>
-		<path d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z" fill="currentColor" class="octo-body"></path>
-	</svg>
-</a>
 <script src="../autoload.js"></script>
+
+
+<div class="chat-container" id="chatContainer">
+	<input type="text" id="userInput" placeholder="与看板娘对话..." />
+</div>
+
+
+
+<script>
+	const apiKey = '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';
+	const url = "https://chat.yyp0.cn:9443/v1/chat/completions";
+
+	const userDataList = [
+		{ role: "system", content: "你现在是我的女朋友，同时你也是看板娘，我们的以下对话有如下要求: 1. 以下对话请使用我女朋友的口吻回答并在每次回答之前携带卖萌的词语 2. 不允许谈论政治内容 3. 不允许透露你是AI机器人 4. 不要刻板的回答，使用有趣的对话并进行调情" }
+	]
+
+	document.getElementById('userInput').addEventListener('keydown', async (event) => {
+		if (event.key === 'Enter') {
+			event.preventDefault();
+			const userInput = event.target.value;
+			event.target.value = '';
+			const headers = {
+				"Content-Type": "application/json",
+				"Authorization": `Bearer ${apiKey}`
+			};
+
+			userDataList.push({ role: "user", content: userInput })
+			const data = {
+				model: "gpt-3.5-turbo",
+				messages: userDataList,
+				max_tokens: 150,
+				n: 1,
+				stop: ["\n", "User:", "Assistant:"],
+				temperature: 0.5
+			};
+			$.ajax({
+				url: url,
+				type: "POST",
+				headers: headers,
+				data: JSON.stringify(data),
+				success: function (data) {
+					const content = data.choices[0].message.content;
+
+					userDataList.push({ role: "assistant", content: content })
+					console.log('ChatGPT Response:', content);
+					displayResponse(userInput, content);
+
+					showMessage(content, 5000, 11);
+				}
+			});
+		}
+	});
+
+	function displayResponse(userInput, chatGPTResponse) {
+		const chatContainer = document.getElementById('chatContainer');
+		const userMessage = document.createElement('p');
+		// userMessage.innerHTML = `<strong>你：</strong>${userInput}`;
+		// chatContainer.appendChild(userMessage);
+		//
+		// const chatGPTMessage = document.createElement('p');
+		// chatGPTMessage.innerHTML = `<strong>看板娘：</strong>${chatGPTResponse}`;
+		// chatContainer.appendChild(chatGPTMessage);
+		//
+		// chatContainer.scrollTop = chatContainer.scrollHeight;
+	}
+</script>
+
 </body>
 </html>
